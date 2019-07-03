@@ -588,9 +588,31 @@ static CDVUIInAppBrowser* instance = nil;
         [self.commandDelegate sendPluginResult:pluginResult callbackId:self.callbackId];
     }
 }
-
+- (void) persistCookies {
+    
+    NSHTTPCookie *cookie;
+    NSHTTPCookieStorage *cookieJar = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    
+    for (cookie in [cookieJar cookies]) {
+        if(!cookie.expiresDate){
+            NSMutableDictionary *cookieProperties = [NSMutableDictionary dictionary];
+            [cookieProperties setObject:cookie.name forKey:NSHTTPCookieName];
+            [cookieProperties setObject:cookie.value forKey:NSHTTPCookieValue];
+            [cookieProperties setObject:cookie.domain forKey:NSHTTPCookieDomain];
+            [cookieProperties setObject:cookie.path forKey:NSHTTPCookiePath];
+            [cookieProperties setObject:[NSNumber numberWithInt:cookie.version] forKey:NSHTTPCookieVersion];
+            // add expiry date so safari keeps oauth cookies on restart
+            [cookieProperties setObject:[[NSDate date] dateByAddingTimeInterval:31536000] forKey:NSHTTPCookieExpires];
+            NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
+            [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:cookie];
+        }
+    }
+}
 - (void)browserExit
 {
+    //ToDo: add parameter so we can switch feature on/off
+    [self persistCookies];
+    
     if (self.callbackId != nil) {
         CDVPluginResult* pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK
                                                       messageAsDictionary:@{@"type":@"exit"}];
@@ -1124,6 +1146,30 @@ static CDVUIInAppBrowser* instance = nil;
     return YES;
 }
 
+- (void) persistCookies
+{
+    NSHTTPCookie *cookie;
+    NSHTTPCookieStorage *cookieJar = [NSHTTPCookieStorage sharedHTTPCookieStorage];
+    
+        for (cookie in [cookieJar cookies]) {
+            NSLog(@"CUR COOKIE:\n%@", cookie);
+            if(!cookie.expiresDate){
+            NSMutableDictionary *cookieProperties = [NSMutableDictionary dictionary];
+            [cookieProperties setObject:cookie.name forKey:NSHTTPCookieName];
+            [cookieProperties setObject:cookie.value forKey:NSHTTPCookieValue];
+            [cookieProperties setObject:cookie.domain forKey:NSHTTPCookieDomain];
+            [cookieProperties setObject:cookie.path forKey:NSHTTPCookiePath];
+            [cookieProperties setObject:[NSNumber numberWithInt:cookie.version] forKey:NSHTTPCookieVersion];
+            
+            // Hack cookie expiry time from oauth server SSO
+            // set expity in a year so they remain saved after app closes
+            [cookieProperties setObject:[[NSDate date] dateByAddingTimeInterval:31536000] forKey:NSHTTPCookieExpires];
+            NSHTTPCookie *cookie = [NSHTTPCookie cookieWithProperties:cookieProperties];
+            [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookie:cookie];
+            NSLog(@"NEW COOKIE:\n%@", cookie);
+            }
+        }
+}
 @end
 
 
